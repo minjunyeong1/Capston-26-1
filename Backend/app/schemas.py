@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Literal
 from typing import Optional
+from typing import List
 
 # ==========================================
 # 1. 스터디 세션 시작 (Session Start) 관련 스키마
@@ -39,3 +40,32 @@ class EventResponse(BaseModel):
     status: str = Field(default="success", description="이벤트 처리 상태 (success/error)")
     action: str = Field(..., descriptions="프론트엔드가 취해야 할 행동 (keep_focus, intervention)")
     routed_video: Optional[str] = Field(None, description="유저 상태에 맞춰 매핑된 사전 렌더링 영상 URL (focus 시에는 안 올 수도 있음)")
+
+class LoginRequest(BaseModel):
+    """로그인 요청 데이터"""
+    username: str = Field(..., description="유저 아이디")
+    password: str = Field(..., description="비밀번호")
+
+class LoginResponse(BaseModel):
+    """로그인 성공 시 반환되는 응답 데이터"""
+    user_id: str = Field(..., description="유저 고유 ID")
+    username: str = Field(..., description="유저 이름")
+    access_token: str = Field(..., description="인증 토큰")
+
+class SessionEndResponse(BaseModel):
+    """세션 종료 시 반환되는 응답 데이터"""
+    session_id: str = Field(..., description="종료된 세션 ID")
+    status: str = Field(default="closed", description="세션 종료 상태")
+    message: str = Field(..., description="세션 종료 메시지")
+
+class DailyProgressItem(BaseModel):
+    """일별 통계 항목"""
+    date: str = Field(..., description="날짜 (YYYY-MM-DD)")
+    study_minutes: int = Field(..., description="해당 날짜의 총 학습 시간 (단위: 분)")
+    daily_focus_percentage: int = Field(..., description="해당 날짜의 평균 집중도 (단위: %)")
+
+class DashboardItem(BaseModel):
+    """대시보드에 표시할 통계 항목 데이터 모델"""
+    user_id: str = Field(..., description="유저 고유 ID")
+    dash_total_focus_percentage: int = Field(..., description="전체 기간 평균 집중도 (단위: %)")
+    dash_progress: List[DailyProgressItem] = Field(..., description="차트에 표기할 누적데이터")
