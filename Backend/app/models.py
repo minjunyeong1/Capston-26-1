@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, Boolean, Text
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -24,6 +24,9 @@ class StudySession(Base):
     status = Column(String, default='active') 
     start_time = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     end_time = Column(DateTime, nullable=True)
+    focus_percentage = Column(Integer, nullable=True)
+    achievement = Column(Text, nullable=True)
+    memo = Column(Text, nullable=True)
 
 class FocusLog(Base):
     __tablename__ = 'focus_logs'

@@ -11,11 +11,15 @@ from app.schemas import (
     EventResponse,
     LoginRequest,
     LoginResponse,
+    DashboardItem,
     SessionEndResponse,
+    SessionResultResponse,
+    SessionResultSaveRequest,
     SessionStartRequest,
     SessionStartResponse,
 )
 from app.services.router_logic import process_vision_event
+from app.services.stats_logic import build_dashboard, build_session_result, calculate_focus_percentage
 
 # API 라우터 객체 생성 (이게 바로 접수 창구입니다)
 router = APIRouter()
@@ -105,7 +109,66 @@ def end_session(session_id: str, db: Session = Depends(get_db)):
 
 
 # ==========================================
-# 3. 비전 AI 이벤트 수신 API (5~10초마다 계속 호출됨)
+# 3. 세션 결과 저장 및 조회 API
+# ==========================================
+@router.post("/sessions/{session_id}/result", response_model=SessionResultResponse)
+def save_session_result(
+    session_id: str,
+    request: SessionResultSaveRequest,
+    db: Session = Depends(get_db),
+):
+    """세션 종료 후 사용자가 작성한 회고와 계산된 집중도 결과를 저장합니다."""
+    session = db.query(StudySession).filter(StudySession.session_id == session_id).first()
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="존재하지 않는 스터디 세션입니다."
+        )
+
+    if session.status != "closed":
+        session.status = "closed"
+        session.end_time = datetime.now(timezone.utc)
+
+    session.achievement = request.achievement
+    session.memo = request.memo
+    session.focus_percentage = calculate_focus_percentage(db, session_id)
+    db.commit()
+    db.refresh(session)
+
+    return SessionResultResponse(**build_session_result(db, session))
+
+
+@router.get("/sessions/{session_id}/result", response_model=SessionResultResponse)
+def get_session_result(session_id: str, db: Session = Depends(get_db)):
+    """저장된 세션 결과와 현재 로그 기준 집중도 결과를 조회합니다."""
+    session = db.query(StudySession).filter(StudySession.session_id == session_id).first()
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="존재하지 않는 스터디 세션입니다."
+        )
+
+    return SessionResultResponse(**build_session_result(db, session))
+
+
+# ==========================================
+# 4. 대시보드 통계 조회 API
+# ==========================================
+@router.get("/dashboard/{user_id}", response_model=DashboardItem)
+def get_dashboard(user_id: str, db: Session = Depends(get_db)):
+    """유저의 일별 학습 시간과 집중도 추이를 조회합니다."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="존재하지 않는 유저입니다."
+        )
+
+    return DashboardItem(**build_dashboard(db, user_id))
+
+
+# ==========================================
+# 5. 비전 AI 이벤트 수신 API (5~10초마다 계속 호출됨)
 # ==========================================
 @router.post("/events", response_model=EventResponse)
 def handle_vision_event(payload: EventPayload, db: Session = Depends(get_db)):
