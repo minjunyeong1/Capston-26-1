@@ -1,9 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# 추후 분리해서 만들 라우터 모듈들을 가져옵니다. 
-# (아직 파일을 안 만들었으니 임시로 주석 처리해 둡니다)
-# from app.api.routes import router as api_router
+from app.api.routes import router as api_router
 # from app.api.ws import router as ws_router
 
 app = FastAPI(
@@ -22,7 +20,7 @@ app.add_middleware(
 )
 
 # 라우터 등록 (부서 연결)
-# app.include_router(api_router, prefix="/api/v1")
+app.include_router(api_router)
 # app.include_router(ws_router)
 
 # 서버 헬스체크용 기본 엔드포인트

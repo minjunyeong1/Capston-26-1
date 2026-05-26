@@ -8,6 +8,11 @@ from typing import List
 # ==========================================
 class SessionStartRequest(BaseModel):
     """스터디 시작 시 프론트엔드에서 보내는 요청 데이터"""
+    user_id: Optional[str] = Field(
+        default=None,
+        description="유저 ID. 인증 기능이 붙기 전에는 생략하면 guest 유저로 처리합니다."
+    )
+
     subject: Literal["MATH", "THINK", "MEM", "LANG"] = Field(
         default="MATH",
         description="현재 공부 중인 과목 카테고리 (MATH: 수학/코딩, THINK: 사고력, MEM: 암기, LANG: 언어)"
@@ -16,6 +21,11 @@ class SessionStartRequest(BaseModel):
     target_duration_minutes: int = Field(
         default=60,
         description="목표 학습 시간 (단위: 분)"
+    )
+
+    target_minutes: Optional[int] = Field(
+        default=None,
+        description="프론트엔드 임시 필드명 호환용. 있으면 target_duration_minutes보다 우선합니다."
     )
 
 class SessionStartResponse(BaseModel):
@@ -34,23 +44,25 @@ class EventPayload(BaseModel):
         ..., 
         description="감지된 비집중 이벤트 유형 (looking_away: 다른 곳 응시, sleep: 졸음)"
     )
+    confidence_score: Optional[float] = Field(
+        default=0.9,
+        description="비전 AI 감지 신뢰도"
+    )
 
 class EventResponse(BaseModel):
     """이벤트 판단 후 프론트엔드로 전달할 영상 라우팅 정보"""
     status: str = Field(default="success", description="이벤트 처리 상태 (success/error)")
-    action: str = Field(..., descriptions="프론트엔드가 취해야 할 행동 (keep_focus, intervention)")
+    action: str = Field(..., description="프론트엔드가 취해야 할 행동 (keep_focus, intervention)")
     routed_video: Optional[str] = Field(None, description="유저 상태에 맞춰 매핑된 사전 렌더링 영상 URL (focus 시에는 안 올 수도 있음)")
 
 class LoginRequest(BaseModel):
     """로그인 요청 데이터"""
-    username: str = Field(..., description="유저 아이디")
-    password: str = Field(..., description="비밀번호")
+    username: str = Field(..., description="시연용 유저 이름 또는 닉네임")
 
 class LoginResponse(BaseModel):
     """로그인 성공 시 반환되는 응답 데이터"""
     user_id: str = Field(..., description="유저 고유 ID")
     username: str = Field(..., description="유저 이름")
-    access_token: str = Field(..., description="인증 토큰")
 
 class SessionEndResponse(BaseModel):
     """세션 종료 시 반환되는 응답 데이터"""

@@ -4,29 +4,65 @@ import uuid
 
 # 우리가 만든 모듈들 불러오기
 from app.database import get_db
-from app.models import StudySession
-from app.schemas import SessionStartRequest, SessionStartResponse, EventPayload, EventResponse
+from app.models import StudySession, User
+from app.schemas import (
+    EventPayload,
+    EventResponse,
+    LoginRequest,
+    LoginResponse,
+    SessionStartRequest,
+    SessionStartResponse,
+)
 from app.services.router_logic import process_vision_event
 
 # API 라우터 객체 생성 (이게 바로 접수 창구입니다)
 router = APIRouter()
 
 # ==========================================
+# 0. 시연용 간단 로그인 API
+# ==========================================
+@router.post("/login", response_model=LoginResponse)
+def login(request: LoginRequest, db: Session = Depends(get_db)):
+    """닉네임만으로 유저를 찾거나 생성합니다. 캡스톤 시연용 간단 로그인입니다."""
+    username = request.username.strip()
+    if not username:
+        username = "guest"
+
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        user = User(username=username)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    return LoginResponse(user_id=user.id, username=user.username)
+
+
+# ==========================================
 # 1. 스터디 세션 시작 API (프론트엔드에서 스터디 시작 버튼 누를 때 호출)
 # ==========================================
+@router.post("/sessions", response_model=SessionStartResponse)
 @router.post("/sessions/start", response_model=SessionStartResponse)
 def start_session(request: SessionStartRequest, db: Session = Depends(get_db)):
     """새로운 스터디 세션을 생성하고 DB에 저장합니다."""
     
     # 1. 고유 세션 ID 생성
     new_session_id = str(uuid.uuid4())
+    user_id = request.user_id or "guest"
+    target_duration_minutes = request.target_minutes or request.target_duration_minutes
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        user = User(id=user_id, username=user_id)
+        db.add(user)
+        db.flush()
     
     # 2. DB 테이블(StudySession)에 새 세션 기록
     new_session = StudySession(
         session_id=new_session_id,
-        user_id=
+        user_id=user_id,
         subject=request.subject,
-        target_duration_minutes=60 # 기본값 60분 (필요시 프론트에서 받도록 수정 가능)
+        target_duration_minutes=target_duration_minutes
     )
     db.add(new_session)
     db.commit()
