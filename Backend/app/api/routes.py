@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime, timezone
 import uuid
 
 # 우리가 만든 모듈들 불러오기
@@ -10,6 +11,7 @@ from app.schemas import (
     EventResponse,
     LoginRequest,
     LoginResponse,
+    SessionEndResponse,
     SessionStartRequest,
     SessionStartResponse,
 )
@@ -72,7 +74,38 @@ def start_session(request: SessionStartRequest, db: Session = Depends(get_db)):
 
 
 # ==========================================
-# 2. 비전 AI 이벤트 수신 API (5~10초마다 계속 호출됨)
+# 2. 스터디 세션 종료 API
+# ==========================================
+@router.patch("/sessions/{session_id}/end", response_model=SessionEndResponse)
+def end_session(session_id: str, db: Session = Depends(get_db)):
+    """진행 중인 스터디 세션을 종료 상태로 변경합니다."""
+    session = db.query(StudySession).filter(StudySession.session_id == session_id).first()
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="존재하지 않는 스터디 세션입니다."
+        )
+
+    if session.status == "closed":
+        return SessionEndResponse(
+            session_id=session_id,
+            status="closed",
+            message="이미 종료된 세션입니다."
+        )
+
+    session.status = "closed"
+    session.end_time = datetime.now(timezone.utc)
+    db.commit()
+
+    return SessionEndResponse(
+        session_id=session_id,
+        status="closed",
+        message="스터디 세션이 종료되었습니다."
+    )
+
+
+# ==========================================
+# 3. 비전 AI 이벤트 수신 API (5~10초마다 계속 호출됨)
 # ==========================================
 @router.post("/events", response_model=EventResponse)
 def handle_vision_event(payload: EventPayload, db: Session = Depends(get_db)):
