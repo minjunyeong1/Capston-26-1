@@ -103,3 +103,30 @@ class DashboardItem(BaseModel):
     dash_total_focus_percentage: int = Field(..., description="전체 기간 평균 집중도 (단위: %)")
     dash_total_intervention_count: int = Field(default=0, description="전체 기간 개입 횟수")
     dash_progress: List[DailyProgressItem] = Field(..., description="차트에 표기할 누적데이터")
+
+# ==========================================
+# 회원가입 및 마이페이지 스키마
+# ==========================================
+class SignupRequest(BaseModel):
+    email: str = Field(..., description="이메일", example="test@example.com")
+    password: str = Field(..., description="비밀번호", example="1234")
+    username: str = Field(..., description="유저 이름", example="테스터")
+
+class SignupResponse(BaseModel):
+    user_id: str = Field(...)
+    username: str = Field(...)
+    message: str = Field(default="회원가입이 완료되었습니다.")
+
+class ProfileResponse(BaseModel):
+    user_id: str = Field(...)
+    email: Optional[str] = Field(None)
+    username: str = Field(...)
+    profile_image_url: Optional[str] = Field(None)
+
+class ProfileUpdateRequest(BaseModel):
+    username: str = Field(...)
+    profile_image_url: Optional[str] = Field(None)
+
+class PasswordUpdateRequest(BaseModel):
+    current_password: str = Field(...)
+    new_password: str = Field(...)

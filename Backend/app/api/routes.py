@@ -18,6 +18,11 @@ from app.schemas import (
     SessionResultSaveRequest,
     SessionStartRequest,
     SessionStartResponse,
+    SignupRequest,
+    SignupResponse,
+    ProfileResponse,
+    ProfileUpdateRequest,
+    PasswordChangeRequest
 )
 from app.services.router_logic import process_vision_event
 from app.services.stats_logic import build_dashboard, build_session_result, calculate_focus_percentage
@@ -26,24 +31,99 @@ from app.services.stats_logic import build_dashboard, build_session_result, calc
 router = APIRouter()
 
 # ==========================================
-# 0. 시연용 간단 로그인 API
+# 0. 시연용 간단 로그인 API % 마이페이지 관리
 # ==========================================
 @router.post("/auth/login", response_model=LoginResponse)
 @router.post("/login", response_model=LoginResponse)
 def login(request: LoginRequest, db: Session = Depends(get_db)):
-    """닉네임만으로 유저를 찾거나 생성합니다. 캡스톤 시연용 간단 로그인입니다."""
-    username = request.username.strip()
-    if not username:
-        username = "guest"
+    """명세서 기반 로그인: 아이디(이메일 또는 닉네임)와 비밀번호를 확인합니다."""
+    # 1. username 필드로 들어온 값이 이메일인지 닉네임인지 모두 검사
+    user = db.query(User).filter(
+        (User.email == request.username) | (User.username == request.username)
+    ).first()
 
-    user = db.query(User).filter(User.username == username).first()
+    # 2. 유저가 없거나 비밀번호가 틀리면 에러
+    if not user or user.password != request.password:
+        # 시연 중 막히지 않도록, 만약 DB에 아예 없는 유저면 임시로 통과시켜주는 방어 로직 (선택사항)
+        if not user and request.username == "test": 
+            return LoginResponse(user_id="test_user_123", username="test", token="dummy-token")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="아이디 또는 비밀번호가 일치하지 않습니다.")
+
+    return LoginResponse(
+        user_id=user.id, 
+        username=user.username, 
+        token=f"demo-token-{user.id}" # 명세서의 token 필드 지원
+    )
+
+@router.get("/users/{user_id}/profile", response_model=ProfileResponse)
+def get_user_profile(user_id: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        user = User(username=username)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="사용자를 찾을 수 없습니다.")
+    return ProfileResponse(
+        user_id=user.id,
+        email=user.email,
+        username=user.username,
+        profile_image_url=None  # 시연용이므로 프로필 이미지 URL은 None으로 반환
+    )
 
-    return LoginResponse(user_id=user.id, username=user.username)
+@router.put("/users/{user_id}/profile", response_model=ProfileResponse)
+def update_user_profile(user_id: str, request: ProfileUpdateRequest, db: Session = Depends(get_db)):
+    """마이페이지 프로필(닉네임, 이미지) 수정"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="유저를 찾을 수 없습니다.")
+    
+    user.username = request.username
+    if request.profile_image_url is not None:
+        user.profile_image_url = request.profile_image_url
+        
+    db.commit()
+    db.refresh(user)
+    
+    return ProfileResponse(
+        user_id=user.id, email=user.email, username=user.username, profile_image_url=user.profile_image_url
+    )
+
+
+@router.put("/users/{user_id}/password")
+def update_password(user_id: str, request: PasswordUpdateRequest, db: Session = Depends(get_db)):
+    """마이페이지 비밀번호 변경"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="유저를 찾을 수 없습니다.")
+        
+    if user.password != request.current_password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="현재 비밀번호가 일치하지 않습니다.")
+        
+    user.password = request.new_password
+    db.commit()
+    
+    return {"message": "비밀번호 변경 성공"}
+
+@router.post("/auth/signup", response_model=SignupResponse, status_code=status.HTTP_201_CREATED)
+def signup(request: SignupRequest, db: Session = Depends(get_db)):
+    """새로운 유저를 생성합니다."""
+
+    existing_user = db.query(User).filter((User.email == request.email) | (User.username == request.username)).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="이미 사용 중인 이메일입니다."
+        )
+
+    new_user = User(
+        email=request.email,
+        password=request.password,  # 시연용이므로 평문 저장 실제로는 해싱된 비밀번호를 저장해야 합니다.
+        username=request.username
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return SignupResponse(user_id=new_user.id, username=new_user.username)
+
+
 
 
 # ==========================================
