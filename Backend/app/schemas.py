@@ -18,20 +18,19 @@ class SessionStartRequest(BaseModel):
         description="현재 공부 중인 과목 카테고리 (MATH: 수학/코딩, THINK: 사고력, MEM: 암기, LANG: 언어)"
     )
 
-    target_duration_minutes: int = Field(
+    target_minutes: Optional[int] = Field(
         default=60,
-        description="목표 학습 시간 (단위: 분)"
+        description="목표 학습 시간 (단위: 분)."
     )
 
-    target_minutes: Optional[int] = Field(
-        default=None,
-        description="프론트엔드 임시 필드명 호환용. 있으면 target_duration_minutes보다 우선합니다."
-    )
+    is_phone_allowed: bool = Field(..., description="휴대폰 허용 여부", example=True)
+    is_book_allowed: bool = Field(..., description="책 허용 여부", example=False)
 
 class SessionStartResponse(BaseModel):
     """세션 생성 성공 시 백엔드가 반환하는 응답 데이터"""
     session_id: str = Field(..., description="생성된 고유 세션 ID (UUID v4)")
     status: str = Field(default="active", description="현재 세션 상태")
+    message: Optional[str] = Field(None, description="세션 생성 성공 메시지")
 
 
 # ==========================================
@@ -64,11 +63,17 @@ class LoginResponse(BaseModel):
     user_id: str = Field(..., description="유저 고유 ID")
     username: str = Field(..., description="유저 이름")
 
+class DistractionStat(BaseModel):
+    subject: str = Field(..., description="딴짓 항목 (예: 스마트폰, 자리이탈)")
+    count: int = Field(..., description="적발 횟수")
+
 class SessionEndResponse(BaseModel):
     """세션 종료 시 반환되는 응답 데이터"""
     session_id: str = Field(..., description="종료된 세션 ID")
     status: str = Field(default="closed", description="세션 종료 상태")
-    message: str = Field(..., description="세션 종료 메시지")
+    total_studied_seconds: int = Field(default=0, description="총 학습 시간 (단위: 초)")
+    focus_score: int = Field(default=0, description="집중도 점수 (0~100)")
+    distraction_stats: List[DistractionStat] = Field(default_factory=list, description="비집중 이벤트별 통계 데이터")
 
 class SessionResultSaveRequest(BaseModel):
     """세션 결과 저장 요청 데이터"""
