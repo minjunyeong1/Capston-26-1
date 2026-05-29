@@ -6,7 +6,7 @@ import uuid
 
 # 우리가 만든 모듈들 불러오기
 from app.database import get_db
-from app.models import StudySession, User, InterventionLog
+from app.models import StudySession, User, InterventionLog, Schedule
 from app.schemas import (
     EventPayload,
     EventResponse,
@@ -22,7 +22,9 @@ from app.schemas import (
     SignupResponse,
     ProfileResponse,
     ProfileUpdateRequest,
-    PasswordChangeRequest
+    PasswordUpdateRequest,
+    ScheduleCreateRequest,
+    ScheduleItem
 )
 from app.services.router_logic import process_vision_event
 from app.services.stats_logic import build_dashboard, build_session_result, calculate_focus_percentage
@@ -283,3 +285,115 @@ def get_dashboard(user_id: str, db: Session = Depends(get_db)):
 
     return DashboardItem(**build_dashboard(db, user_id))
 
+
+# ==========================================
+# 6. 캘린더 개인 일정 관리 API (Schedules)
+# ==========================================
+
+@router.get("/users/{user_id}/schedules", response_model=list[ScheduleItem])
+def get_user_schedules(user_id: str, year_month: str = None, db: Session = Depends(get_db)):
+    """달력 - 월별/전체 개인 일정 조회"""
+    query = db.query(Schedule).filter(Schedule.user_id == user_id)
+    
+    # 프론트엔드에서 특정 월(예: "2026-05")만 요청했다면 필터링
+    if year_month:
+        query = query.filter(Schedule.start_date.startswith(year_month))
+        
+    schedules = query.all()
+    
+    # DB 스네이크 케이스 -> 프론트엔드 카멜 케이스 매핑
+    result = []
+    for s in schedules:
+        result.append(ScheduleItem(
+            id=s.id,
+            title=s.title,
+            isAllDay=s.is_all_day,
+            startDate=s.start_date,
+            endDate=s.end_date,
+            startTime=s.start_time,
+            endTime=s.end_time,
+            repeatType=s.repeat_type,
+            repeatInterval=s.repeat_interval,
+            color=s.color
+        ))
+    return result
+
+
+@router.post("/users/{user_id}/schedules", response_model=ScheduleItem, status_code=201)
+def create_schedule(user_id: str, request: ScheduleCreateRequest, db: Session = Depends(get_db)):
+    """달력 - 새 개인 일정 추가"""
+    # 프론트엔드 카멜 케이스 -> DB 스네이크 케이스 매핑 저장
+    new_schedule = Schedule(
+        user_id=user_id,
+        title=request.title,
+        is_all_day=request.isAllDay,
+        start_date=request.startDate,
+        end_date=request.endDate,
+        start_time=request.startTime,
+        end_time=request.endTime,
+        repeat_type=request.repeatType,
+        repeat_interval=request.repeatInterval,
+        color=request.color
+    )
+    db.add(new_schedule)
+    db.commit()
+    db.refresh(new_schedule)
+    
+    return ScheduleItem(
+        id=new_schedule.id,
+        title=new_schedule.title,
+        isAllDay=new_schedule.is_all_day,
+        startDate=new_schedule.start_date,
+        endDate=new_schedule.end_date,
+        startTime=new_schedule.start_time,
+        endTime=new_schedule.end_time,
+        repeatType=new_schedule.repeat_type,
+        repeatInterval=new_schedule.repeat_interval,
+        color=new_schedule.color
+    )
+
+
+@router.put("/schedules/{schedule_id}", response_model=ScheduleItem)
+def update_schedule(schedule_id: str, request: ScheduleCreateRequest, db: Session = Depends(get_db)):
+    """달력 - 개인 일정 수정"""
+    schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="일정을 찾을 수 없습니다.")
+        
+    schedule.title = request.title
+    schedule.is_all_day = request.isAllDay
+    schedule.start_date = request.startDate
+    schedule.end_date = request.endDate
+    schedule.start_time = request.startTime
+    schedule.end_time = request.endTime
+    schedule.repeat_type = request.repeatType
+    schedule.repeat_interval = request.repeatInterval
+    schedule.color = request.color
+    
+    db.commit()
+    db.refresh(schedule)
+    
+    return ScheduleItem(
+        id=schedule.id,
+        title=schedule.title,
+        isAllDay=schedule.is_all_day,
+        startDate=schedule.start_date,
+        endDate=schedule.end_date,
+        startTime=schedule.start_time,
+        endTime=schedule.end_time,
+        repeatType=schedule.repeat_type,
+        repeatInterval=schedule.repeat_interval,
+        color=schedule.color
+    )
+
+
+@router.delete("/schedules/{schedule_id}", status_code=204)
+def delete_schedule(schedule_id: str, db: Session = Depends(get_db)):
+    """달력 - 개인 일정 삭제"""
+    schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+    if not schedule:
+        raise HTTPException(status_code=404, detail="일정을 찾을 수 없습니다.")
+        
+    db.delete(schedule)
+    db.commit()
+    return # 204 No Content는 본문 없이 리턴

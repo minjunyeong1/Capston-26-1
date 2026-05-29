@@ -130,3 +130,17 @@ class ProfileUpdateRequest(BaseModel):
 class PasswordUpdateRequest(BaseModel):
     current_password: str = Field(...)
     new_password: str = Field(...)
+
+class ScheduleCreateRequest(BaseModel):
+    title: str = Field(..., example="리액트 기초 인강")
+    isAllDay: bool = Field(default=False, description="종일 여부", example=False)
+    startDate: str = Field(..., description="시작 날짜", example="2026-05-01")
+    endDate: str = Field(..., description="종료 날짜", example="2026-05-01")
+    startTime: Optional[str] = Field(None, description="시작 시간", example="14:00")
+    endTime: Optional[str] = Field(None, description="종료 시간", example="15:00")
+    repeatType: str = Field(..., description="반복 유형 (none, day, week, month, year)", example="week")
+    repeatInterval: Optional[int] = Field(default=1, description="반복 간격 (예: 2면 2주마다 반복)", example=1)
+    color: Optional[str] = Field(None, description="일정 색상", example="#2196f3")
+
+class ScheduleItem(ScheduleCreateRequest):
+    id: str = Field(..., description="일정 고유 ID", example="sched_99213")
