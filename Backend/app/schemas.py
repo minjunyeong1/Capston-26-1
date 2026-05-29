@@ -58,11 +58,13 @@ class EventResponse(BaseModel):
 class LoginRequest(BaseModel):
     """로그인 요청 데이터"""
     username: str = Field(..., description="시연용 유저 이름 또는 닉네임")
+    password: str = Field(..., description="비밀번호")
 
 class LoginResponse(BaseModel):
     """로그인 성공 시 반환되는 응답 데이터"""
     user_id: str = Field(..., description="유저 고유 ID")
     username: str = Field(..., description="유저 이름")
+    token: str = Field(..., description="인증 토큰 (현재는 시연용)")
 
 class DistractionStat(BaseModel):
     subject: str = Field(..., description="딴짓 항목 (예: 스마트폰, 자리이탈)")

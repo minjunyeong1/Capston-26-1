@@ -6,7 +6,7 @@ import uuid
 
 # 우리가 만든 모듈들 불러오기
 from app.database import get_db
-from app.models import StudySession, User, InterventionLog, Schedule
+from app.models import StudySession, User, InterventionLog, Schedule, FocusLog
 from app.schemas import (
     EventPayload,
     EventResponse,
@@ -24,7 +24,8 @@ from app.schemas import (
     ProfileUpdateRequest,
     PasswordUpdateRequest,
     ScheduleCreateRequest,
-    ScheduleItem
+    ScheduleItem,
+    MonitorStatusBatchRequest
 )
 from app.services.router_logic import process_vision_event
 from app.services.stats_logic import build_dashboard, build_session_result, calculate_focus_percentage
@@ -150,7 +151,9 @@ def start_session(request: SessionStartRequest, db: Session = Depends(get_db)):
         session_id=new_session_id,
         user_id=user_id,
         subject=request.subject,
-        target_duration_minutes=request.target_minutes
+        target_duration_minutes=request.target_minutes,
+        is_phone_allowed=request.is_phone_allowed,
+        is_book_allowed=request.is_book_allowed
     )
     db.add(new_session)
     db.commit()
@@ -191,9 +194,9 @@ def process_status_batch(session_id: str, request: MonitorStatusBatchRequest, db
     for log in request.logs:
         new_log = FocusLog(
             session_id=session_id,
-            event_type=log.status
+            event_type=log.status,
             start_time=log.timestamp,
-            confidence_score=log.current_ear # EAR 수치를 신뢰도/참고 데이터로 활용
+            confidence_score=log.confidence_score
         )
         db.add(new_log)
     

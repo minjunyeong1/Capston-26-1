@@ -9,8 +9,8 @@ class User(Base):
     __tablename__ = 'users'
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     
-    email = Column(String, unique=True, index=True, nullable=False)
-    password = Column(String, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=True) # guest 유저 생성을 위해 nullable=True로 설정함
+    password = Column(String, nullable=True) # guest 유저 생성을 위해 nullable=True로 설정함
     profile_image_url = Column(String, nullable=True) # 향후 프로필 이미지 저장용 (현재는 사용 안 함)
     
     username = Column(String, nullable=False)
