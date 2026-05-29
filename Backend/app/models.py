@@ -42,9 +42,9 @@ class FocusLog(Base):
     log_id = Column(Integer, primary_key=True, autoincrement=True)
     session_id = Column(String, ForeignKey('study_sessions.session_id', ondelete="CASCADE"), nullable=False)
     
-    # 비집중 유형 (looking_away, sleep, focusw 등)
+    # 비집중 유형 (looking_away, sleep, focus 등)
     event_type = Column(String, nullable=False) 
-    confidence_score = Column(Float, nullable=True) # 하람님이 보내주시는 비전 AI 신뢰도
+    confidence_score = Column(Float, nullable=True)
     
     start_time = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     end_time = Column(DateTime, nullable=True)

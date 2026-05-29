@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Literal
 from typing import Optional
 from typing import List
+from datetime import datetime
 
 # ==========================================
 # 1. 스터디 세션 시작 (Session Start) 관련 스키마
@@ -144,3 +145,11 @@ class ScheduleCreateRequest(BaseModel):
 
 class ScheduleItem(ScheduleCreateRequest):
     id: str = Field(..., description="일정 고유 ID", example="sched_99213")
+
+class StatusLog(BaseModel):
+    timestamp: datetime = Field(..., description="상태 기록 시점")
+    status: Literal["focus", "sleep", "looking_away"] = Field(..., description="감지된 사용자 상태")
+    confidence_score: float = Field(..., description="비전 AI 판별 신뢰도 (0.0 ~ 1.0)", example=0.92)
+
+class MonitorStatusBatchRequest(BaseModel):
+    logs: List[StatusLog] = Field(..., description="모아서 보내는 상태 로그 배열")

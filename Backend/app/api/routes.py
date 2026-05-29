@@ -179,6 +179,33 @@ def handle_vision_event(session_id: str, payload: EventPayload, db: Session = De
     # 3. 결과 반환 (이 결과는 EventResponse 스키마 규격을 100% 만족함)
     return result
 
+
+@router.post("/sessions/{session_id}/status", status_code=status.HTTP_204_NO_CONTENT)
+def process_status_batch(session_id: str, request: MonitorStatusBatchRequest, db: Session = Depends(get_db)):
+    """프론트엔드가 10~30초간 모아서 보낸 실시간 상태 로그 배열을 한 번에 DB에 밀어 넣습니다."""
+    session = db.query(StudySession).filter(StudySession.session_id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="존재하지 않는 스터디 세션입니다.")
+
+    # 1. 뭉탱이(배치)로 들어온 로그들을 DB 추가 대기열에 올립니다.
+    for log in request.logs:
+        new_log = FocusLog(
+            session_id=session_id,
+            event_type=log.status
+            start_time=log.timestamp,
+            confidence_score=log.current_ear # EAR 수치를 신뢰도/참고 데이터로 활용
+        )
+        db.add(new_log)
+    
+    # 2. [가장 중요] 반복문이 다 끝나고 나서 딱 한 번만 DB에 커밋(저장)합니다!
+    # 이 한 줄 덕분에 서버 부하가 획기적으로 줄어듭니다.
+    db.commit()
+
+    # 3. 긴급한 개입(팩폭 영상)은 /event API가 담당하므로, 
+    # 여기서는 데이터가 잘 저장되었다는 가벼운 응답만 넘겨줍니다.
+    return
+
+
 # ==========================================
 # 3. 스터디 세션 종료 API
 # ==========================================
