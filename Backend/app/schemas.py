@@ -72,7 +72,7 @@ class SessionEndResponse(BaseModel):
 
 class SessionResultSaveRequest(BaseModel):
     """세션 결과 저장 요청 데이터"""
-    achievement: str = Field(default="", description="오늘 목표를 얼마나 달성했는지에 대한 회고")
+    achievement_percentage: int = Field(default="", description="오늘 공부에 대한 목표 달성률 수치 (0~100)")
     memo: str = Field(default="", description="오늘 공부에 대한 메모")
 
 class SessionResultResponse(BaseModel):
@@ -82,7 +82,7 @@ class SessionResultResponse(BaseModel):
     study_minutes: int = Field(..., description="실제 학습 시간 (단위: 분)")
     focus_percentage: int = Field(..., description="FocusLog 기반 집중도 (단위: %)")
     intervention_count: int = Field(..., description="InterventionLog 기반 개입 횟수")
-    achievement: str = Field(default="", description="저장된 목표 달성 회고")
+    achievement_percentage: int = Field(default="", description="저장된 목표 달성률")
     memo: str = Field(default="", description="저장된 공부 메모")
 
 class DailyProgressItem(BaseModel):
@@ -90,11 +90,13 @@ class DailyProgressItem(BaseModel):
     date: str = Field(..., description="날짜 (YYYY-MM-DD)")
     study_minutes: int = Field(..., description="해당 날짜의 총 학습 시간 (단위: 분)")
     daily_focus_percentage: int = Field(..., description="해당 날짜의 평균 집중도 (단위: %)")
+    daily_achievement_percentage: int = Field(default=0, description="해당 날짜의 평균 목표 달성률 (단위: %)")
     intervention_count: int = Field(default=0, description="해당 날짜의 개입 횟수")
 
 class DashboardItem(BaseModel):
     """대시보드에 표시할 통계 항목 데이터 모델"""
     user_id: str = Field(..., description="유저 고유 ID")
     dash_total_focus_percentage: int = Field(..., description="전체 기간 평균 집중도 (단위: %)")
+    dash_total_achievement_percentage: int = Field(default=0, description="전체 기간 평균 목표 달성률 (단위: %)")
     dash_total_intervention_count: int = Field(default=0, description="전체 기간 개입 횟수")
     dash_progress: List[DailyProgressItem] = Field(..., description="차트에 표기할 누적데이터")

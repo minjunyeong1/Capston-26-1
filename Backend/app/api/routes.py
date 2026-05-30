@@ -132,6 +132,7 @@ def save_session_result(
     session.achievement = request.achievement
     session.memo = request.memo
     session.focus_percentage = calculate_focus_percentage(db, session_id)
+    session.achievement_percentage = request.achievement_percentage
     db.commit()
     db.refresh(session)
 

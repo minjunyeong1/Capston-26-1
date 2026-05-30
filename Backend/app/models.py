@@ -25,7 +25,7 @@ class StudySession(Base):
     start_time = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     end_time = Column(DateTime, nullable=True)
     focus_percentage = Column(Integer, nullable=True)
-    achievement = Column(Text, nullable=True)
+    achievement_percentage = Column(Integer, default=0, nullable=True)
     memo = Column(Text, nullable=True)
 
 class FocusLog(Base):

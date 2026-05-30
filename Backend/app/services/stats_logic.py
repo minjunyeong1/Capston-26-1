@@ -44,7 +44,7 @@ def build_session_result(db: Session, session: StudySession) -> dict:
         "study_minutes": calculate_study_minutes(session),
         "focus_percentage": focus_percentage,
         "intervention_count": intervention_count,
-        "achievement": session.achievement or "",
+        "achievement_percentage": session.achievement or 0,
         "memo": session.memo or "",
     }
 
@@ -69,8 +69,10 @@ def build_dashboard(db: Session, user_id: str) -> dict:
     total_focus_count = 0
     total_log_count = 0
     total_intervention_count = 0
+    total_achievement_sum = 0
+    total_session_count = 0
     daily_stats: dict[str, dict[str, int]] = defaultdict(
-        lambda: {"study_minutes": 0, "focus_count": 0, "log_count": 0, "intervention_count": 0}
+        lambda: {"study_minutes": 0, "focus_count": 0, "log_count": 0, "intervention_count": 0, "achievement_sum": 0, "session_count": 0}
     )
 
     for session in sessions:
@@ -78,33 +80,43 @@ def build_dashboard(db: Session, user_id: str) -> dict:
         session_logs = logs_by_session[session.session_id]
         focus_count = sum(1 for log in session_logs if log.event_type == "focus")
         log_count = len(session_logs)
+        current_achieve = session.achievement_percentage or 0
 
         daily_stats[session_date]["study_minutes"] += calculate_study_minutes(session)
         daily_stats[session_date]["focus_count"] += focus_count
         daily_stats[session_date]["log_count"] += log_count
         daily_stats[session_date]["intervention_count"] += intervention_counts_by_session[session.session_id]
+        daily_stats[session_date]["achievement_sum"] += current_achieve
+        daily_stats[session_date]["session_count"] += 1
 
         total_focus_count += focus_count
         total_log_count += log_count
         total_intervention_count += intervention_counts_by_session[session.session_id]
+        total_achievement_sum += current_achieve
+        total_session_count += 1
 
     dash_progress = []
     for date, stats in sorted(daily_stats.items()):
         log_count = stats["log_count"]
+        session_count = stats["session_count"]
         daily_focus_percentage = round((stats["focus_count"] / log_count) * 100) if log_count else 0
+        daily_achievement_percentage = round(stats["achievement_sum"] / session_count)
         dash_progress.append(
             {
                 "date": date,
                 "study_minutes": stats["study_minutes"],
                 "daily_focus_percentage": daily_focus_percentage,
+                "daily_achievement_percentage": daily_achievement_percentage,
                 "intervention_count": stats["intervention_count"],
             }
         )
 
     dash_total_focus_percentage = round((total_focus_count / total_log_count) * 100) if total_log_count else 0
+    dash_total_achievement_percentage = round(total_achievement_sum / total_session_count) if total_session_count else 0
     return {
         "user_id": user_id,
         "dash_total_focus_percentage": dash_total_focus_percentage,
+        "dash_total_achievement_percentage": dash_total_achievement_percentage,
         "dash_total_intervention_count": total_intervention_count,
         "dash_progress": dash_progress,
     }
