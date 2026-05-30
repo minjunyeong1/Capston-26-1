@@ -4,6 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router as api_router
 # from app.api.ws import router as ws_router
 
+from app.database import engine
+from app.models import Base
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI(
     title="AI Study Mate Backend",
     description="바디 더블링 기반 AI 스터디 코치 동적 라우팅 서버",

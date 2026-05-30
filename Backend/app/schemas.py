@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Literal
 from typing import Optional
 from typing import List
+from datetime import datetime
 
 # ==========================================
 # 1. 스터디 세션 시작 (Session Start) 관련 스키마
@@ -18,20 +19,19 @@ class SessionStartRequest(BaseModel):
         description="현재 공부 중인 과목 카테고리 (MATH: 수학/코딩, THINK: 사고력, MEM: 암기, LANG: 언어)"
     )
 
-    target_duration_minutes: int = Field(
+    target_minutes: Optional[int] = Field(
         default=60,
-        description="목표 학습 시간 (단위: 분)"
+        description="목표 학습 시간 (단위: 분)."
     )
 
-    target_minutes: Optional[int] = Field(
-        default=None,
-        description="프론트엔드 임시 필드명 호환용. 있으면 target_duration_minutes보다 우선합니다."
-    )
+    is_phone_allowed: bool = Field(..., description="휴대폰 허용 여부", example=True)
+    is_book_allowed: bool = Field(..., description="책 허용 여부", example=False)
 
 class SessionStartResponse(BaseModel):
     """세션 생성 성공 시 백엔드가 반환하는 응답 데이터"""
     session_id: str = Field(..., description="생성된 고유 세션 ID (UUID v4)")
     status: str = Field(default="active", description="현재 세션 상태")
+    message: Optional[str] = Field(None, description="세션 생성 성공 메시지")
 
 
 # ==========================================
@@ -58,17 +58,25 @@ class EventResponse(BaseModel):
 class LoginRequest(BaseModel):
     """로그인 요청 데이터"""
     username: str = Field(..., description="시연용 유저 이름 또는 닉네임")
+    password: str = Field(..., description="비밀번호")
 
 class LoginResponse(BaseModel):
     """로그인 성공 시 반환되는 응답 데이터"""
     user_id: str = Field(..., description="유저 고유 ID")
     username: str = Field(..., description="유저 이름")
+    token: str = Field(..., description="인증 토큰 (현재는 시연용)")
+
+class DistractionStat(BaseModel):
+    subject: str = Field(..., description="딴짓 항목 (예: 스마트폰, 자리이탈)")
+    count: int = Field(..., description="적발 횟수")
 
 class SessionEndResponse(BaseModel):
     """세션 종료 시 반환되는 응답 데이터"""
     session_id: str = Field(..., description="종료된 세션 ID")
     status: str = Field(default="closed", description="세션 종료 상태")
-    message: str = Field(..., description="세션 종료 메시지")
+    total_studied_seconds: int = Field(default=0, description="총 학습 시간 (단위: 초)")
+    focus_score: int = Field(default=0, description="집중도 점수 (0~100)")
+    distraction_stats: List[DistractionStat] = Field(default_factory=list, description="비집중 이벤트별 통계 데이터")
 
 class SessionResultSaveRequest(BaseModel):
     """세션 결과 저장 요청 데이터"""
@@ -100,3 +108,52 @@ class DashboardItem(BaseModel):
     dash_total_achievement_percentage: int = Field(default=0, description="전체 기간 평균 목표 달성률 (단위: %)")
     dash_total_intervention_count: int = Field(default=0, description="전체 기간 개입 횟수")
     dash_progress: List[DailyProgressItem] = Field(..., description="차트에 표기할 누적데이터")
+
+# ==========================================
+# 회원가입 및 마이페이지 스키마
+# ==========================================
+class SignupRequest(BaseModel):
+    email: str = Field(..., description="이메일", example="test@example.com")
+    password: str = Field(..., description="비밀번호", example="1234")
+    username: str = Field(..., description="유저 이름", example="테스터")
+
+class SignupResponse(BaseModel):
+    user_id: str = Field(...)
+    username: str = Field(...)
+    message: str = Field(default="회원가입이 완료되었습니다.")
+
+class ProfileResponse(BaseModel):
+    user_id: str = Field(...)
+    email: Optional[str] = Field(None)
+    username: str = Field(...)
+    profile_image_url: Optional[str] = Field(None)
+
+class ProfileUpdateRequest(BaseModel):
+    username: str = Field(...)
+    profile_image_url: Optional[str] = Field(None)
+
+class PasswordUpdateRequest(BaseModel):
+    current_password: str = Field(...)
+    new_password: str = Field(...)
+
+class ScheduleCreateRequest(BaseModel):
+    title: str = Field(..., example="리액트 기초 인강")
+    isAllDay: bool = Field(default=False, description="종일 여부", example=False)
+    startDate: str = Field(..., description="시작 날짜", example="2026-05-01")
+    endDate: str = Field(..., description="종료 날짜", example="2026-05-01")
+    startTime: Optional[str] = Field(None, description="시작 시간", example="14:00")
+    endTime: Optional[str] = Field(None, description="종료 시간", example="15:00")
+    repeatType: str = Field(..., description="반복 유형 (none, day, week, month, year)", example="week")
+    repeatInterval: Optional[int] = Field(default=1, description="반복 간격 (예: 2면 2주마다 반복)", example=1)
+    color: Optional[str] = Field(None, description="일정 색상", example="#2196f3")
+
+class ScheduleItem(ScheduleCreateRequest):
+    id: str = Field(..., description="일정 고유 ID", example="sched_99213")
+
+class StatusLog(BaseModel):
+    timestamp: datetime = Field(..., description="상태 기록 시점")
+    status: Literal["focus", "sleep", "looking_away"] = Field(..., description="감지된 사용자 상태")
+    confidence_score: float = Field(..., description="비전 AI 판별 신뢰도 (0.0 ~ 1.0)", example=0.92)
+
+class MonitorStatusBatchRequest(BaseModel):
+    logs: List[StatusLog] = Field(..., description="모아서 보내는 상태 로그 배열")
