@@ -157,3 +157,12 @@ class StatusLog(BaseModel):
 
 class MonitorStatusBatchRequest(BaseModel):
     logs: List[StatusLog] = Field(..., description="모아서 보내는 상태 로그 배열")
+
+class SessionHistoryItem(BaseModel):
+    """과거 스터디 기록 리스트 항목"""
+    session_id: str = Field(...)
+    subject: str = Field(..., description="과목")
+    start_time: str = Field(..., description="시작 시간")
+    study_minutes: int = Field(..., description="학습 시간(분)")
+    focus_percentage: int = Field(..., description="집중도(%)")
+    achievement_percentage: int = Field(default=0, description="목표 달성률(%)")

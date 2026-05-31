@@ -25,10 +25,12 @@ from app.schemas import (
     PasswordUpdateRequest,
     ScheduleCreateRequest,
     ScheduleItem,
-    MonitorStatusBatchRequest
+    MonitorStatusBatchRequest,
+    DistractionStat,
+    SessionHistoryItem
 )
 from app.services.router_logic import process_vision_event
-from app.services.stats_logic import build_dashboard, build_session_result, calculate_focus_percentage
+from app.services.stats_logic import build_dashboard, build_session_result, calculate_focus_percentage, calculate_study_minutes
 
 # API 라우터 객체 생성 (이게 바로 접수 창구입니다)
 router = APIRouter()
@@ -126,11 +128,38 @@ def signup(request: SignupRequest, db: Session = Depends(get_db)):
 
     return SignupResponse(user_id=new_user.id, username=new_user.username)
 
+# ==========================================
+# 1. 과거 스터디 세션 히스토리 조회 API
+# ==========================================
+@router.get("/users/{user_id}/sessions", response_model=list[SessionHistoryItem])
+def get_user_session_history(user_id: str, db: Session = Depends(get_db)):
+    """유저의 과거 모든 스터디 세션 기록을 최신순으로 조회합니다."""
+    
+    # 1. 해당 유저의 모든 세션을 가져오되, 시작 시간 기준 내림차순(최신순)으로 정렬합니다.
+    sessions = db.query(StudySession)\
+                 .filter(StudySession.user_id == user_id)\
+                 .order_by(StudySession.start_time.desc())\
+                 .all()
 
+    # 2. 프론트엔드가 예쁘게 그릴 수 있도록 포장해서 리스트에 담습니다.
+    history_list = []
+    for session in sessions:
+        history_list.append(
+            SessionHistoryItem(
+                session_id=session.session_id,
+                subject=session.subject,
+                start_time=session.start_time.isoformat() if session.start_time else "", 
+                study_minutes=calculate_study_minutes(session),
+                focus_percentage=session.focus_percentage or 0,
+                achievement_percent=session.achievement_percent or 0
+            )
+        )
+        
+    return history_list
 
 
 # ==========================================
-# 1. 스터디 세션 시작 API (프론트엔드에서 스터디 시작 버튼 누를 때 호출)
+# 2. 스터디 세션 시작 API (프론트엔드에서 스터디 시작 버튼 누를 때 호출)
 # ==========================================
 @router.post("/sessions", response_model=SessionStartResponse)
 def start_session(request: SessionStartRequest, db: Session = Depends(get_db)):
@@ -163,7 +192,7 @@ def start_session(request: SessionStartRequest, db: Session = Depends(get_db)):
 
 
 # ==========================================
-# 2. 실시간 비집중 이벤트 감지 API
+# 3. 실시간 비집중 이벤트 감지 API
 # ==========================================
 @router.post("/sessions/{session_id}/event", response_model=EventResponse)
 def handle_vision_event(session_id: str, payload: EventPayload, db: Session = Depends(get_db)):
@@ -210,7 +239,7 @@ def process_status_batch(session_id: str, request: MonitorStatusBatchRequest, db
 
 
 # ==========================================
-# 3. 스터디 세션 종료 API
+# 4. 스터디 세션 종료 API
 # ==========================================
 @router.patch("/sessions/{session_id}/end", response_model=SessionEndResponse)
 def end_session(session_id: str, db: Session = Depends(get_db)):
@@ -258,7 +287,7 @@ def end_session(session_id: str, db: Session = Depends(get_db)):
 
 
 # ==========================================
-# 4. 세션 결과 저장 및 조회 API
+# 5. 세션 결과 저장 및 조회 API
 # ==========================================
 @router.post("/sessions/{session_id}/result", response_model=SessionResultResponse)
 def save_session_result(
@@ -278,7 +307,6 @@ def save_session_result(
         session.status = "closed"
         session.end_time = datetime.now(timezone.utc)
 
-    session.achievement = request.achievement
     session.memo = request.memo
     session.focus_percentage = calculate_focus_percentage(db, session_id)
     session.achievement_percentage = request.achievement_percentage
@@ -302,7 +330,7 @@ def get_session_result(session_id: str, db: Session = Depends(get_db)):
 
 
 # ==========================================
-# 5. 대시보드 통계 조회 API
+# 6. 대시보드 통계 조회 API
 # ==========================================
 @router.get("/dashboard/{user_id}", response_model=DashboardItem)
 def get_dashboard(user_id: str, db: Session = Depends(get_db)):
@@ -318,7 +346,7 @@ def get_dashboard(user_id: str, db: Session = Depends(get_db)):
 
 
 # ==========================================
-# 6. 캘린더 개인 일정 관리 API (Schedules)
+# 7. 캘린더 개인 일정 관리 API (Schedules)
 # ==========================================
 
 @router.get("/users/{user_id}/schedules", response_model=list[ScheduleItem])
