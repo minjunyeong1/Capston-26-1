@@ -8,7 +8,6 @@ from app.schemas import EventResponse
 from fastapi import HTTPException, status
 
 DEFAULT_IDLE_VIDEO_ID = "IDLE_LOOP"
-COMMON_FIRST_WARNING_VIDEO_ID = "ALERT_COUGH"
 
 SECOND_OR_LATER_VIDEO_IDS = {
     "MATH": {
@@ -86,16 +85,13 @@ def select_intervention_video_id(subject: str, event_type: str, cumulative_count
     if cumulative_count <= 0:
         return DEFAULT_IDLE_VIDEO_ID
 
-    if cumulative_count == 1:
-        return COMMON_FIRST_WARNING_VIDEO_ID
-
     subject_routes = SECOND_OR_LATER_VIDEO_IDS.get(subject, SECOND_OR_LATER_VIDEO_IDS["MEM"])
     candidate_video_ids = subject_routes.get(event_type)
     if not candidate_video_ids:
-        return COMMON_FIRST_WARNING_VIDEO_ID
+        return SECOND_OR_LATER_VIDEO_IDS["MEM"]["looking_away"][0]
 
     # 2회차는 첫 번째 맞춤 영상부터 시작하고, 이후에는 같은 풀 안에서 순환합니다.
-    video_index = (cumulative_count - 2) % len(candidate_video_ids)
+    video_index = (cumulative_count - 1) % len(candidate_video_ids)
     return candidate_video_ids[video_index]
 
 

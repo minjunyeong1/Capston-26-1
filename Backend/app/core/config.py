@@ -4,9 +4,6 @@ VIDEO_POOL = {
     # 1. 대기 및 긍정 상태
     "IDLE_LOOP": "/videos/DEFAULT/default.mp4",
     "FOCUS_CHEER": "/videos/DEFAULT/default.mp4", 
-    
-    # 2. 1회차 공통 경고 
-    "ALERT_COUGH": "/videos/DEFAULT/default.mp4",
 
     # 3. MATH (수학) - 딴짓 (1~5번)
     "MATH_LOOKING_AWAY_01": "/videos/MATH/MATHLooking_away_1.mp4",
