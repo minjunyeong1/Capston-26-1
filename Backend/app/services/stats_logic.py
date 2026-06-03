@@ -44,7 +44,7 @@ def build_session_result(db: Session, session: StudySession) -> dict:
         "study_minutes": calculate_study_minutes(session),
         "focus_percentage": focus_percentage,
         "intervention_count": intervention_count,
-        "achievement_percentage": session.achievement or 0,
+        "achievement_percentage": session.achievement_percentage or 0,
         "memo": session.memo or "",
     }
 
