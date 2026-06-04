@@ -1,7 +1,9 @@
 "use client";
 
 import styled from "styled-components";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation"; // 🌟 useRouter 임포트 필수!
+import { calendarApi } from "@/app/_lib/api/studyApi";
 
 // ==========================================
 // 1. 스타일 컴포넌트 영역
@@ -21,9 +23,44 @@ const DayCell = styled.div<{ $isCurrentMonth: boolean; $isToday: boolean }>`
   background-color: ${(props) => (props.$isToday ? "#f0f8ff" : "white")};
   opacity: ${(props) => (props.$isCurrentMonth ? 1 : 0.3)};
   cursor: pointer; display: flex; flex-direction: column; gap: 4px;
+  position: relative; 
   &:hover { border-color: #2196f3; }
 `;
-const DayNumber = styled.span`font-weight: bold; font-size: 14px; color: #333; margin-bottom: 4px;`;
+
+const DayHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0; 
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+`;
+
+const DayNumber = styled.span`
+  font-weight: bold; 
+  font-size: 14px; 
+  color: #333; 
+`;
+
+const StatusBadge = styled.div<{ $isSuccess: boolean }>`
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: ${(props) => (props.$isSuccess ? "#4caf50" : "#f44336")};
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 10px; 
+  font-weight: bold;
+  cursor: ${(props) => (props.$isSuccess ? "pointer" : "default")};
+  z-index: 10;
+
+  &:hover {
+    transform: ${(props) => (props.$isSuccess ? "scale(1.15)" : "none")};
+    transition: transform 0.2s;
+  }
+`;
 
 const EventBadge = styled.div<{ $color?: string }>`
   font-size: 11px; color: white; 
@@ -53,13 +90,8 @@ const EventListItem = styled.div<{ $color?: string }>`
 `;
 const AddEventBtn = styled.button`padding: 12px; background-color: white; border: 1px dashed #bbb; color: #666; border-radius: 8px; cursor: pointer; font-weight: bold; &:hover { background-color: #f9f9f9; border-color: #2196f3; color: #2196f3; }`;
 
-// 🌟 로테이션될 예쁜 색상 배열
 const EVENT_COLORS = ["#2196f3", "#f44336", "#4caf50", "#ff9800", "#9c27b0", "#607d8b"];
 
-
-// ==========================================
-// 2. 헬퍼 함수
-// ==========================================
 const isEventOnDate = (event: any, cellDateStr: string) => {
   if (cellDateStr >= event.startDate && cellDateStr <= event.endDate) return true;
   if (event.repeatType !== "none" && cellDateStr > event.endDate) {
@@ -83,38 +115,25 @@ const isEventOnDate = (event: any, cellDateStr: string) => {
 };
 
 // ==========================================
-// 3. 메인 컴포넌트
+// 2. 메인 컴포넌트
 // ==========================================
 export default function CalendarPage() {
+  const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // 🌟 유저 ID를 상태로 관리합니다. (초기값은 빈 문자열)
+  const [userId, setUserId] = useState<string>("");
 
-  const [events, setEvents] = useState<any[]>([
-    { 
-      id: "1", title: "리액트 기초 인강", isAllDay: false, 
-      startDate: "2026-05-01", endDate: "2026-05-01", startTime: "14:00", endTime: "16:00", 
-      repeatType: "none", repeatInterval: 1, color: EVENT_COLORS[0] 
-    },
-    { 
-      id: "2", title: "캡스톤 팀플 (매주)", isAllDay: true, 
-      startDate: "2026-05-15", endDate: "2026-05-15", startTime: "09:00", endTime: "10:00", 
-      repeatType: "week", repeatInterval: 1, color: EVENT_COLORS[4] 
-    },
-    { 
-      id: "3", title: "중간고사 기간", isAllDay: true, 
-      startDate: "2026-05-20", endDate: "2026-05-23", startTime: "09:00", endTime: "10:00", 
-      repeatType: "none", repeatInterval: 1, color: EVENT_COLORS[1] 
-    }
-  ]);
-
-  // 🌟 [추가됨] 다음에 배정될 색상의 인덱스를 기억하는 State
-  const [nextColorIndex, setNextColorIndex] = useState(3); // 초기 데이터가 3개 있으니 인덱스 3부터 시작
-
+  const [events, setEvents] = useState<any[]>([]);
+  const [studyRecords, setStudyRecords] = useState<Record<string, any[]>>({});
+  const [nextColorIndex, setNextColorIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalView, setModalView] = useState<"list" | "main" | "repeat">("list");
+  const [modalView, setModalView] = useState<"list" | "main" | "repeat" | "recordList" | "recordDetail">("list");
   const [selectedDate, setSelectedDate] = useState("");
   const [dayEventsList, setDayEventsList] = useState<any[]>([]);
+  const [dayRecordsList, setDayRecordsList] = useState<any[]>([]);
+  const [selectedRecord, setSelectedRecord] = useState<any>(null);
 
-  // 폼 상태 데이터
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [isAllDay, setIsAllDay] = useState(false);
@@ -124,7 +143,7 @@ export default function CalendarPage() {
   const [endTime, setEndTime] = useState("10:00");
   const [repeatType, setRepeatType] = useState<"none" | "day" | "week" | "month" | "year">("none");
   const [repeatInterval, setRepeatInterval] = useState(1);
-  const [currentColor, setCurrentColor] = useState(""); // 🌟 [수정됨] 현재 수정/작성 중인 일정의 색상
+  const [currentColor, setCurrentColor] = useState("");
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -135,6 +154,53 @@ export default function CalendarPage() {
   const days = [];
   for (let i = 0; i < firstDayOfMonth; i++) days.push(null);
   for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+  // 🌟 컴포넌트가 마운트될 때 로그인 여부를 먼저 확인합니다!
+  useEffect(() => {
+    const storedId = localStorage.getItem("user_id");
+    if (!storedId) {
+      alert("로그인이 필요한 서비스입니다.");
+      router.push("/auth/login");
+    } else {
+      setUserId(storedId); // 로그인이 되어있다면 상태에 저장
+    }
+  }, [router]);
+
+  // 🌟 로그인된 userId가 설정된 이후에 데이터를 불러옵니다.
+  const loadData = async () => {
+    if (!userId) return; // userId가 없으면 실행 안 함
+
+    try {
+      const scheduleData = await calendarApi.getSchedules(userId);
+      setEvents(scheduleData);
+      setNextColorIndex(scheduleData.length % EVENT_COLORS.length); 
+    } catch (error) {
+      console.error("일정 불러오기 에러:", error);
+    }
+
+    try {
+      const recordsData = await calendarApi.getSessionResults(userId);
+      const recordsMap: Record<string, any[]> = {};
+      
+      recordsData.forEach((session: any) => {
+        if (!session.start_time) return; 
+
+        const dateStr = session.start_time.split(/[T ]/)[0]; 
+        
+        if (!recordsMap[dateStr]) recordsMap[dateStr] = [];
+        recordsMap[dateStr].push(session);
+      });
+      
+      setStudyRecords(recordsMap);
+    } catch (error) {
+      console.warn("백엔드 공부 기록 API 호출 실패");
+    }
+  };
+
+  // userId가 바뀔 때마다 데이터를 새로 불러옵니다.
+  useEffect(() => {
+    loadData();
+  }, [userId]);
 
   const handleDayClick = (day: number | null) => {
     if (!day) return;
@@ -152,16 +218,32 @@ export default function CalendarPage() {
     setIsModalOpen(true);
   };
 
+  const handleBadgeClick = (e: React.MouseEvent, dateStr: string) => {
+    e.stopPropagation(); 
+    
+    setSelectedDate(dateStr);
+    const records = studyRecords[dateStr] || [];
+    
+    if (records.length === 0) return; 
+
+    setDayRecordsList(records);
+    
+    if (records.length === 1) {
+      setSelectedRecord(records[0]);
+      setModalView("recordDetail");
+    } else {
+      setModalView("recordList");
+    }
+    setIsModalOpen(true);
+  };
+
   const prepareNewEventForm = (dateStr: string) => {
     setEditingId(null);
     setTitle(""); setIsAllDay(false);
     setStartDate(dateStr); setEndDate(dateStr);
     setStartTime("09:00"); setEndTime("10:00");
     setRepeatType("none"); setRepeatInterval(1);
-    
-    // 🌟 새 일정일 때는 로테이션 대기 중인 색상을 임시로 할당
     setCurrentColor(EVENT_COLORS[nextColorIndex]); 
-    
     setModalView("main");
   };
 
@@ -171,35 +253,44 @@ export default function CalendarPage() {
     setStartDate(eventData.startDate); setEndDate(eventData.endDate);
     setStartTime(eventData.startTime); setEndTime(eventData.endTime);
     setRepeatType(eventData.repeatType); setRepeatInterval(eventData.repeatInterval);
-    
-    // 🌟 수정 모드일 때는 기존 일정의 색상을 유지
     setCurrentColor(eventData.color);
-    
     setModalView("main");
   };
 
-  const handleSave = () => {
-    const newEvent = {
-      id: editingId || Date.now().toString(),
+  const handleSave = async () => {
+    if (!userId) return;
+
+    const scheduleData = {
       title: title || "새 일정",
-      isAllDay, startDate, endDate, startTime, endTime, repeatType, repeatInterval, 
-      color: currentColor // 🌟 현재 폼이 가지고 있는 색상으로 저장
+      isAllDay, startDate, endDate, startTime, endTime, repeatType, repeatInterval, color: currentColor
     };
 
-    if (editingId) {
-      setEvents(events.map(e => (e.id === editingId ? newEvent : e)));
-    } else {
-      setEvents([...events, newEvent]);
-      // 🌟 새 일정을 저장했을 때만 다음 로테이션 색상으로 인덱스 넘기기! (6개 다 쓰면 다시 0번으로)
-      setNextColorIndex((prevIndex) => (prevIndex + 1) % EVENT_COLORS.length);
+    try {
+      if (editingId) {
+        await calendarApi.updateSchedule(editingId, scheduleData);
+      } else {
+        await calendarApi.createSchedule(userId, scheduleData); // 🌟 userId 사용
+      }
+      setIsModalOpen(false);
+      loadData(); 
+    } catch (error) {
+      console.error("일정 저장 에러:", error);
+      alert("일정 저장에 실패했습니다.");
     }
-    setIsModalOpen(false);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!editingId) return;
-    setEvents(events.filter(e => e.id !== editingId));
-    setIsModalOpen(false);
+    if (window.confirm("이 일정을 삭제하시겠습니까?")) {
+      try {
+        await calendarApi.deleteSchedule(editingId);
+        setIsModalOpen(false);
+        loadData(); 
+      } catch (error) {
+        console.error("일정 삭제 에러:", error);
+        alert("일정 삭제에 실패했습니다.");
+      }
+    }
   };
 
   const getRepeatText = () => {
@@ -229,6 +320,10 @@ export default function CalendarPage() {
           {days.map((day, index) => {
             const formattedDate = day ? `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}` : "";
             const currentDayEvents = day ? events.filter(e => isEventOnDate(e, formattedDate)) : [];
+            
+            const dailyRecords = day ? (studyRecords[formattedDate] || []) : [];
+            const recordCount = dailyRecords.length;
+            const isPastOrToday = day ? (formattedDate <= todayStr) : false;
 
             return (
               <DayCell 
@@ -237,10 +332,28 @@ export default function CalendarPage() {
                 $isToday={formattedDate === todayStr}
                 onClick={() => handleDayClick(day)}
               >
-                {day && <DayNumber>{day}</DayNumber>}
-                {currentDayEvents.map(event => (
-                  <EventBadge key={event.id} $color={event.color}>{event.title}</EventBadge>
-                ))}
+                {day && (
+                  <DayHeader>
+                    <DayNumber>{day}</DayNumber>
+                    
+                    {isPastOrToday && (
+                      <StatusBadge 
+                        $isSuccess={recordCount > 0}
+                        onClick={(e) => {
+                          if (recordCount > 0) handleBadgeClick(e, formattedDate);
+                        }}
+                      >
+                        {recordCount >= 2 ? recordCount : ""}
+                      </StatusBadge>
+                    )}
+                  </DayHeader>
+                )}
+
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {currentDayEvents.map(event => (
+                    <EventBadge key={event.id} $color={event.color}>{event.title}</EventBadge>
+                  ))}
+                </div>
               </DayCell>
             );
           })}
@@ -251,6 +364,80 @@ export default function CalendarPage() {
         <ModalOverlay onClick={() => setIsModalOpen(false)}>
           <ModalContent onClick={(e) => e.stopPropagation()}>
             
+            {modalView === "recordList" && (
+              <>
+                <BackHeader onClick={() => setIsModalOpen(false)}>
+                  <span>📅 {selectedDate} 공부 기록</span>
+                  <span style={{color: '#888', fontWeight: 'normal'}}>✖</span>
+                </BackHeader>
+                <ModalBody>
+                  {dayRecordsList.map((record, idx) => {
+                    const startTime = record.start_time.split("T")[1].substring(0, 5);
+                    return (
+                      <EventListItem 
+                        key={idx} 
+                        $color="#4caf50" 
+                        onClick={() => { setSelectedRecord(record); setModalView("recordDetail"); }}
+                      >
+                        <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '15px' }}>
+                          📖 {record.subject} 공부
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#666', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>시작: {startTime}</span>
+                          <span>집중도: {record.focus_percentage}%</span>
+                        </div>
+                      </EventListItem>
+                    );
+                  })}
+                </ModalBody>
+              </>
+            )}
+
+            {modalView === "recordDetail" && selectedRecord && (
+              <>
+                <BackHeader onClick={() => {
+                  if (dayRecordsList.length > 1) setModalView("recordList");
+                  else setIsModalOpen(false);
+                }}>
+                  {dayRecordsList.length > 1 ? "◀ 목록으로" : "◀ 닫기"}
+                </BackHeader>
+                <ModalBody style={{ gap: '20px' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 'bold', textAlign: 'center', margin: '10px 0' }}>
+                    {selectedRecord.subject} 공부 완료! 🎉
+                  </div>
+
+                  <Row>
+                    <span style={{ color: '#888', fontWeight: 'bold' }}>집중도 점수</span>
+                    <span style={{ color: '#4caf50', fontSize: '20px', fontWeight: 'bold' }}>
+                      {selectedRecord.focus_percentage}%
+                    </span>
+                  </Row>
+
+                  <Row>
+                    <span style={{ color: '#888', fontWeight: 'bold' }}>진행도 (달성도)</span>
+                    <span style={{ color: '#2196f3', fontSize: '20px', fontWeight: 'bold' }}>         
+                      {selectedRecord.achievement_percentage || 0}%
+                    </span>
+                  </Row>
+
+                  <div style={{ marginTop: '10px' }}>
+                    <div style={{ color: '#888', fontWeight: 'bold', marginBottom: '8px' }}>오늘의 메모</div>
+                    <div style={{ 
+                      padding: '16px', 
+                      backgroundColor: '#f8fafc', 
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '12px', 
+                      fontSize: '15px',
+                      color: '#333',
+                      lineHeight: '1.5'
+                    }}>
+                      {selectedRecord.memo || "작성된 메모가 없습니다."}
+                    </div>
+                  </div>
+                </ModalBody>
+              </>
+            )}
+
             {modalView === "list" && (
               <>
                 <BackHeader onClick={() => setIsModalOpen(false)}>
@@ -282,8 +469,6 @@ export default function CalendarPage() {
                     type="text" placeholder="제목 (메모) 입력" 
                     value={title} onChange={(e) => setTitle(e.target.value)} autoFocus
                   />
-
-                  {/* 🌟 색상 선택 UI 제거됨 */}
 
                   <Row>
                     <span>하루 종일</span>

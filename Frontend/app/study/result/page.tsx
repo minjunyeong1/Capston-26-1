@@ -1,9 +1,9 @@
 "use client";
 
 import styled from "styled-components";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { studyApi } from "@/app/_lib/api/studyApi";
 
 // ==========================================
 // 1. 스타일 컴포넌트 영역
@@ -20,7 +20,7 @@ const PageWrapper = styled.div`
 const ContentContainer = styled.div`
   display: flex;
   width: 100%;
-  max-width: 1200px; /* 🌟 1. 전체 너비를 1100px -> 1200px로 넉넉하게 확장 */
+  max-width: 1000px;
   gap: 30px;
 
   @media (max-width: 1024px) {
@@ -28,20 +28,15 @@ const ContentContainer = styled.div`
   }
 `;
 
-/* 좌측 차트 영역 */
 const LeftSection = styled.div`
-  flex: 1.2; /* 🌟 2. 왼쪽 영역의 비율을 늘려서 카드들이 숨통이 트이게 함 */
+  flex: 1;
   display: flex;
+  flex-direction: column; /* 단일 카드이므로 꽉 차게 변경 */
   gap: 20px;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-  }
 `;
 
-/* 우측 폼 영역 */
 const RightSection = styled.div`
-  flex: 1; /* 🌟 3. 오른쪽 영역과 비율 균형을 맞춤 */
+  flex: 1.2;
 `;
 
 const Card = styled.div`
@@ -49,30 +44,37 @@ const Card = styled.div`
   border: 2px solid #e2e8f0;
   border-radius: 16px;
   box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.05);
-  padding: 30px 20px;
+  padding: 40px 20px; 
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   flex: 1;
-  min-width: 220px; /* 🌟 4. 카드가 너무 찌그러지지 않도록 최소 너비 보장 */
+  min-width: 220px;
 `;
 
 const CardTitle = styled.h3`
-  font-size: 17px;
+  font-size: 20px;
   font-weight: bold;
   color: #333;
-  margin: 0 0 20px 0;
+  margin: 0 0 30px 0;
   text-align: center;
   width: 100%;
-  word-break: keep-all; /* 🌟 5. '무엇이 집중/력을' 처럼 이상하게 줄바꿈 되는 것 방지 */
+  word-break: keep-all;
   line-height: 1.4;
 `;
 
-/* 우측 폼 전용 큼직한 카드 */
-const FormCard = styled(Card)`
+const FormCard = styled.div`
+  background-color: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
   align-items: flex-start;
   padding: 0;
   overflow: hidden;
+  height: 100%;
 `;
 
 const FormHeader = styled.div`
@@ -93,6 +95,8 @@ const FormBody = styled.div`
   flex-direction: column;
   gap: 40px;
   box-sizing: border-box;
+  flex: 1;
+  justify-content: space-between;
 `;
 
 const InputGroup = styled.div`
@@ -122,6 +126,27 @@ const UnderlineInput = styled.input`
   }
 `;
 
+const Slider = styled.input`
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: #e2e8f0;
+  outline: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #6366f1;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+`;
+
 const SaveButton = styled.button`
   align-self: flex-end;
   background-color: #111;
@@ -133,119 +158,138 @@ const SaveButton = styled.button`
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.2s;
+  margin-top: 20px;
 
   &:hover {
     background-color: #333;
   }
+  
+  &:disabled {
+    background-color: #94a3b8;
+    cursor: not-allowed;
+  }
 `;
 
-// ==========================================
-// 2. 더미 데이터 및 헬퍼 함수
-// ==========================================
-const distractionData = [
-  { subject: '스마트폰', A: 120, fullMark: 150 },
-  { subject: '소음', A: 98, fullMark: 150 },
-  { subject: '졸음', A: 86, fullMark: 150 },
-  { subject: '딴생각', A: 99, fullMark: 150 },
-  { subject: '피로', A: 85, fullMark: 150 },
-];
-
-const radius = 60;
-const strokeWidth = 16;
+const radius = 70;
+const strokeWidth = 18;
 const circumference = 2 * Math.PI * radius;
 
 // ==========================================
-// 3. 메인 컴포넌트
+// 2. 메인 컴포넌트
 // ==========================================
 export default function StudyResultPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionId = searchParams.get("session_id") || "";
   
-  const [achievement, setAchievement] = useState("");
-  const [memo, setMemo] = useState("");
+  const [score, setScore] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const score = 67; 
+  const [achievement, setAchievement] = useState<number>(50);
+  const [memo, setMemo] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!sessionId) {
+      setIsLoading(false);
+      return;
+    }
+
+    studyApi.endSession(sessionId)
+      .then((data) => {
+        setScore(data.focus_score);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error("결과 불러오기 실패:", err);
+        setIsLoading(false);
+      });
+  }, [sessionId]);
+
   const strokeDashoffset = circumference - (score / 100) * circumference;
 
-  const handleSave = () => {
-    if (!achievement.trim() || !memo.trim()) {
-      return alert("회고 내용을 모두 작성해주세요!");
+  const handleSave = async () => {
+    if (!memo.trim()) {
+      return alert("오늘의 메모를 작성해주세요!");
     }
-    alert("오늘의 공부 기록이 저장되었습니다! 고생하셨습니다 🎉");
-    router.push("/mypage");
+    if (!sessionId) return alert("세션 ID를 찾을 수 없습니다.");
+
+    setIsSaving(true);
+    try {
+      await studyApi.saveSessionResult(sessionId, achievement, memo);
+      alert("오늘의 공부 기록이 저장되었습니다! 고생하셨습니다 🎉");
+      router.push("/mypage"); 
+    } catch (err) {
+      console.error(err);
+      alert("저장 중 오류가 발생했습니다.");
+      setIsSaving(false);
+    }
   };
+
+  if (isLoading) {
+    return <PageWrapper>결과를 분석 중입니다...</PageWrapper>;
+  }
 
   return (
     <PageWrapper>
       <ContentContainer>
         
-        {/* === 좌측: 통계 차트 영역 === */}
         <LeftSection>
-          
           <Card>
-            <CardTitle>집중도 점수</CardTitle>
-            <div style={{ position: "relative", display: "flex", justifyContent: "center", alignItems: "center", height: "240px", width: "100%" }}>
-              <svg width="160" height="160" viewBox="0 0 160 160">
-                <circle cx="80" cy="80" r={radius} stroke="#f1f5f9" strokeWidth={strokeWidth} fill="none" />
+            <CardTitle>최종 집중도 점수</CardTitle>
+            <div style={{ position: "relative", display: "flex", justifyContent: "center", alignItems: "center", height: "260px", width: "100%" }}>
+              <svg width="180" height="180" viewBox="0 0 180 180">
+                <circle cx="90" cy="90" r={radius} stroke="#f1f5f9" strokeWidth={strokeWidth} fill="none" />
                 <circle
-                  cx="80" cy="80" r={radius}
+                  cx="90" cy="90" r={radius}
                   stroke="#64748b" strokeWidth={strokeWidth} fill="none"
                   strokeDasharray={circumference}
                   strokeDashoffset={strokeDashoffset}
                   strokeLinecap="round"
-                  style={{ transition: "stroke-dashoffset 1s ease-in-out", transform: "rotate(-90deg)", transformOrigin: "50% 50%" }}
+                  style={{ transition: "stroke-dashoffset 1.5s ease-in-out", transform: "rotate(-90deg)", transformOrigin: "50% 50%" }}
                 />
               </svg>
-              <div style={{ position: "absolute", fontSize: "28px", fontWeight: "bold", color: "#333" }}>
+              <div style={{ position: "absolute", fontSize: "32px", fontWeight: "bold", color: "#333" }}>
                 {score}%
               </div>
             </div>
           </Card>
-
-          <Card>
-            <CardTitle>무엇이 집중력을 잃게 했나요?</CardTitle>
-            <div style={{ width: "100%", height: "240px" }}>
-              <ResponsiveContainer width="100%" height="100%">
-                {/* 🌟 6. outerRadius를 "50%"로 대폭 줄여서 글씨가 들어갈 바깥쪽 마진을 충분히 확보! */}
-                <RadarChart cx="50%" cy="50%" outerRadius="50%" data={distractionData}>
-                  <PolarGrid stroke="#e2e8f0" />
-                  {/* 글씨 크기를 12로 살짝 줄이고, 너무 굵지 않게 조절 */}
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#475569', fontSize: 12, fontWeight: 600 }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 150]} tick={false} axisLine={false} />
-                  <Radar name="Distraction" dataKey="A" stroke="#94a3b8" fill="#cbd5e1" fillOpacity={0.6} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-
         </LeftSection>
 
-        {/* === 우측: 회고 작성 폼 영역 === */}
         <RightSection>
           <FormCard>
             <FormHeader>오늘의 공부</FormHeader>
             <FormBody>
-              <InputGroup>
-                <Label>오늘 목표를 얼마나 달성했나요?</Label>
-                <UnderlineInput 
-                  type="text" 
-                  value={achievement}
-                  onChange={(e) => setAchievement(e.target.value)}
-                  placeholder="예: 리액트 컴포넌트 3개 중 2개 완성" 
-                />
-              </InputGroup>
+              
+              <div>
+                <InputGroup style={{ marginBottom: '40px' }}>
+                  <Label style={{ display: "flex", justifyContent: "space-between", marginBottom: '10px' }}>
+                    <span>오늘 목표를 얼마나 달성했나요?</span>
+                    <span style={{ color: "#6366f1", fontSize: "24px" }}>{achievement}%</span>
+                  </Label>
+                  <Slider 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    step="5"
+                    value={achievement}
+                    onChange={(e) => setAchievement(Number(e.target.value))}
+                  />
+                </InputGroup>
 
-              <InputGroup>
-                <Label>오늘의 메모</Label>
-                <UnderlineInput 
-                  type="text" 
-                  value={memo}
-                  onChange={(e) => setMemo(e.target.value)}
-                  placeholder="예: 상태 관리가 조금 헷갈렸다. 내일 복습 필수!" 
-                />
-              </InputGroup>
+                <InputGroup>
+                  <Label style={{ marginBottom: '10px' }}>오늘의 메모</Label>
+                  <UnderlineInput 
+                    type="text" 
+                    value={memo}
+                    onChange={(e) => setMemo(e.target.value)}
+                    placeholder="예: 상태 관리가 조금 헷갈렸다. 내일 복습 필수!" 
+                  />
+                </InputGroup>
+              </div>
 
-              <SaveButton onClick={handleSave}>
-                기록 저장하고 메인으로
+              <SaveButton onClick={handleSave} disabled={isSaving}>
+                {isSaving ? "저장 중..." : "기록 저장하고 메인으로"}
               </SaveButton>
             </FormBody>
           </FormCard>

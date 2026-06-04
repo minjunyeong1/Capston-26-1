@@ -194,7 +194,8 @@ export default function Home() {
               src={currentData.imageSrc} 
               alt={currentData.title}
               fill 
-              style={{ objectFit: "contain" }} 
+              sizes="(max-width: 768px) 100vw, 50vw" 
+              priority
             />
           </CarouselImage>
           <CarouselTitle>{currentData.title}</CarouselTitle>

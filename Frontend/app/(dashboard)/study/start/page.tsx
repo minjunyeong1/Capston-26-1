@@ -3,26 +3,27 @@
 import styled from "styled-components";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { studyApi } from "@/app/_lib/api/studyApi"; 
 
 // ==========================================
-// 1. 스타일 컴포넌트 영역 (✨ 업그레이드된 디자인)
+// 1. 스타일 컴포넌트 영역
 // ==========================================
 const PageWrapper = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
   height: calc(100vh - 160px);
-  background-color: #f5f7fb; /* 약간 차가운 톤의 밝은 회색 배경으로 변경 */
+  background-color: #f5f7fb; 
 `;
 
 const ContentContainer = styled.div`
   display: flex;
   width: 100%;
   max-width: 1100px;
-  background-color: white; /* 🌟 하얀색 카드로 전체를 감싸서 콘텐츠 집중도 상승 */
+  background-color: white; 
   padding: 60px 80px;
   border-radius: 30px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04); /* 부드럽고 깊은 그림자 */
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04); 
   gap: 80px;
 
   @media (max-width: 1024px) {
@@ -39,7 +40,7 @@ const LeftSection = styled.div`
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  border-right: 1px solid #f0f0f0; /* 양쪽을 구분하는 은은한 선 추가 */
+  border-right: 1px solid #f0f0f0; 
   padding-right: 40px;
 
   @media (max-width: 1024px) {
@@ -78,9 +79,8 @@ const TimeBox = styled.input`
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
 
-  /* ✨ 포커스 시 테두리 색상 변화 및 살짝 떠오르는 효과 */
   &:focus {
-    border-color: #6366f1; /* 트렌디한 인디고(보라+파랑) 색상 */
+    border-color: #6366f1; 
     background: white;
     transform: translateY(-4px);
     box-shadow: 0 10px 20px rgba(99, 102, 241, 0.15);
@@ -90,11 +90,6 @@ const TimeBox = styled.input`
     color: #ddd;
     font-weight: 400;
   }
-
-  &::-webkit-inner-spin-button,
-  &::-webkit-outer-spin-button {
-    -webkit-appearance: none; margin: 0;
-  }
 `;
 
 const Colon = styled.div`
@@ -103,7 +98,6 @@ const Colon = styled.div`
   gap: 12px;
   margin: 0 10px;
   
-  /* : 모양을 동그라미 두 개로 예쁘게 구현 */
   &::before, &::after {
     content: '';
     width: 10px;
@@ -126,11 +120,11 @@ const TimeHint = styled.div`
 
 /* ===== 오른쪽: 입력 폼 & 버튼 영역 ===== */
 const RightSection = styled.div`
-  flex: 1.2; /* 입력창 부분이 살짝 더 넓게 */
+  flex: 1.2; 
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 45px;
+  gap: 40px; 
   padding-left: 20px;
 `;
 
@@ -149,6 +143,32 @@ const Label = styled.label`
   letter-spacing: 0.5px;
 `;
 
+/* 🌟 과목 선택 라디오(체크박스) 컨테이너 */
+const SubjectContainer = styled.div`
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+`;
+
+const SubjectLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #1e293b;
+  cursor: pointer;
+  user-select: none;
+
+  input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #6366f1;
+  }
+`;
+
 const UnderlineInput = styled.input`
   width: 100%;
   border: none;
@@ -162,7 +182,7 @@ const UnderlineInput = styled.input`
   transition: border-color 0.3s;
 
   &:focus {
-    border-bottom-color: #6366f1; /* 인디고 포인트 컬러 */
+    border-bottom-color: #6366f1; 
   }
   
   &::placeholder {
@@ -171,9 +191,32 @@ const UnderlineInput = styled.input`
   }
 `;
 
+const CheckboxContainer = styled.div`
+  display: flex;
+  gap: 30px;
+  margin-top: -10px;
+`;
+
+const CheckboxLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  user-select: none;
+
+  input {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #6366f1; 
+  }
+`;
 
 const StartButton = styled.button`
-  align-self: flex-start; /* 좌측 정렬로 변경해서 입력 흐름을 자연스럽게 */
+  align-self: flex-start; 
   background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   color: white;
   padding: 18px 45px;
@@ -182,7 +225,7 @@ const StartButton = styled.button`
   font-size: 18px;
   font-weight: bold;
   cursor: pointer;
-  margin-top: 20px;
+  margin-top: 10px;
   box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
   transition: all 0.3s ease;
   display: flex;
@@ -198,8 +241,14 @@ const StartButton = styled.button`
     transform: translateY(1px);
     box-shadow: 0 5px 10px rgba(99, 102, 241, 0.3);
   }
-`;
 
+  &:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+`;
 
 // ==========================================
 // 2. 메인 컴포넌트
@@ -208,12 +257,18 @@ export default function StudyStartPage() {
   const router = useRouter();
 
   const [timeValues, setTimeValues] = useState(["", "", "", ""]);
+  
+  // 🌟 과목을 체크박스에서 선택하도록 빈 문자열로 초기화
   const [topic, setTopic] = useState("");
   const [goal, setGoal] = useState("");
+  
+  const [isPhoneAllowed, setIsPhoneAllowed] = useState(false);
+  const [isBookAllowed, setIsBookAllowed] = useState(true);
+  
+  const [isStarting, setIsStarting] = useState(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // 시간 입력 처리 로직 (이전과 동일)
   const handleTimeChange = (index: number, value: string) => {
     const numValue = value.replace(/[^0-9]/g, "");
     if (!numValue && value !== "") return;
@@ -234,19 +289,38 @@ export default function StudyStartPage() {
     }
   };
 
-  const handleStartStudy = () => {
-    const hours = parseInt(`${timeValues[0] || "0"}${timeValues[1] || "0"}`);
-    const minutes = parseInt(`${timeValues[2] || "0"}${timeValues[3] || "0"}`);
-    const totalMinutes = hours * 60 + minutes;
+const handleStartStudy = async () => {
+  const userId = localStorage.getItem("user_id");
 
-    if (totalMinutes === 0) return alert("공부할 시간을 입력해주세요!");
-    if (!topic.trim()) return alert("공부 주제를 입력해주세요!");
+  // 만약 로그인 정보가 없다면 세션을 만들지 못하게 차단하고 로그인창으로 튕겨냅니다.
+  if (!userId) {
+    alert("로그인 정보가 만료되었습니다. 다시 로그인해주세요.");
+    router.push("/auth/login");
+    return;
+  }
 
-    // TODO: 백엔드 API 통신
-    alert(`${hours}시간 ${minutes}분 동안 '${topic}' 공부를 시작합니다! 🚀`);
+  const hours = parseInt(`${timeValues[0] || "0"}${timeValues[1] || "0"}`);
+  const minutes = parseInt(`${timeValues[2] || "0"}${timeValues[3] || "0"}`);
+  const totalMinutes = hours * 60 + minutes;
+
+  if (totalMinutes === 0) return alert("공부할 시간을 입력해주세요.");
+  if (!topic) return alert("공부 과목을 선택해주세요.");
+
+  setIsStarting(true);
+
+  try {
+    // 🌟 [중요] 임시 ID 대신 진짜 로그인된 userId를 백엔드로 보내 세션을 생성합니다!
+    const data = await studyApi.startSession(userId, topic, totalMinutes, isPhoneAllowed, isBookAllowed);
     
-    // router.push(`/study/timer?time=${totalMinutes}&topic=${topic}`);
-  };
+    const sessionId = data.session_id; 
+    router.push(`/study/studying?session_id=${sessionId}&targetTime=${totalMinutes}`);
+
+  } catch (err) {
+    console.error(err);
+    alert("세션 생성에 실패했습니다.");
+    setIsStarting(false);
+  }
+};
 
   return (
     <PageWrapper>
@@ -259,7 +333,6 @@ export default function StudyStartPage() {
             <TimeBox ref={(el) => { inputRefs.current[0] = el; }} value={timeValues[0]} onChange={(e) => handleTimeChange(0, e.target.value)} onKeyDown={(e) => handleKeyDown(0, e)} placeholder="0" />
             <TimeBox ref={(el) => { inputRefs.current[1] = el; }} value={timeValues[1]} onChange={(e) => handleTimeChange(1, e.target.value)} onKeyDown={(e) => handleKeyDown(1, e)} placeholder="0" />
             
-            {/* 세련된 콜론(:) 디자인 */}
             <Colon />
             
             <TimeBox ref={(el) => { inputRefs.current[2] = el; }} value={timeValues[2]} onChange={(e) => handleTimeChange(2, e.target.value)} onKeyDown={(e) => handleKeyDown(2, e)} placeholder="0" />
@@ -272,16 +345,23 @@ export default function StudyStartPage() {
           </TimeHint>
         </LeftSection>
 
-        {/* === 오른쪽 입력 및 버튼 부분 === */}
         <RightSection>
           <InputGroup>
-            <Label>공부 주제 (Subject)</Label>
-            <UnderlineInput 
-              type="text" 
-              placeholder="무엇을 공부할 계획인가요?" 
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-            />
+            <Label>공부 과목 (Subject)</Label>
+            <SubjectContainer>
+              {["MATH", "THINK", "MEM", "LANG"].map((subjectOption) => (
+                <SubjectLabel key={subjectOption}>
+                  <input 
+                    type="radio" 
+                    name="subject" 
+                    value={subjectOption}
+                    checked={topic === subjectOption}
+                    onChange={(e) => setTopic(e.target.value)}
+                  />
+                  {subjectOption}
+                </SubjectLabel>
+              ))}
+            </SubjectContainer>
           </InputGroup>
 
           <InputGroup>
@@ -294,8 +374,29 @@ export default function StudyStartPage() {
             />
           </InputGroup>
 
-          <StartButton onClick={handleStartStudy}>
-            <span></span> 타이머 시작하기
+          {/* 🌟 이모티콘 제거된 체크박스 */}
+          <CheckboxContainer>
+            <CheckboxLabel>
+              <input 
+                type="checkbox" 
+                checked={isPhoneAllowed} 
+                onChange={(e) => setIsPhoneAllowed(e.target.checked)} 
+              />
+              핸드폰 사용 허용
+            </CheckboxLabel>
+            
+            <CheckboxLabel>
+              <input 
+                type="checkbox" 
+                checked={isBookAllowed} 
+                onChange={(e) => setIsBookAllowed(e.target.checked)} 
+              />
+              책/인쇄물 사용 허용
+            </CheckboxLabel>
+          </CheckboxContainer>
+
+          <StartButton onClick={handleStartStudy} disabled={isStarting}>
+            {isStarting ? "타이머 준비 중..." : "타이머 시작하기"}
           </StartButton>
         </RightSection>
 
