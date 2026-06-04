@@ -144,6 +144,9 @@ def get_user_session_history(user_id: str, db: Session = Depends(get_db)):
     # 2. 프론트엔드가 예쁘게 그릴 수 있도록 포장해서 리스트에 담습니다.
     history_list = []
     for session in sessions:
+
+        actual_intervention_count = db.query(InterventionLog).filter(InterventionLog.session_id == session.session_id).count()
+        
         history_list.append(
             SessionHistoryItem(
                 session_id=session.session_id,
