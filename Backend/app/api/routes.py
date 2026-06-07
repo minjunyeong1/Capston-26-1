@@ -155,7 +155,8 @@ def get_user_session_history(user_id: str, db: Session = Depends(get_db)):
                 study_minutes=calculate_study_minutes(session),
                 focus_percentage=session.focus_percentage or 0,
                 achievement_percentage=session.achievement_percentage or 0,
-                intervention_count=actual_intervention_count
+                intervention_count=actual_intervention_count,
+                memo=session.memo or ""
             )
         )
         

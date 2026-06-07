@@ -167,3 +167,5 @@ class SessionHistoryItem(BaseModel):
     focus_percentage: int = Field(..., description="집중도(%)")
     achievement_percentage: int = Field(default=0, description="목표 달성률(%)")
     intervention_count: int = Field(default=0, description="AI 코치 개입 횟수")
+    memo: str = Field(default="", description="스터디 메모")
+
