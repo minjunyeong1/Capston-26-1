@@ -180,6 +180,7 @@ export default function CalendarPage() {
 
     try {
       const recordsData = await calendarApi.getSessionResults(userId);
+      console.log("공부 기록 데이터:", recordsData);
       const recordsMap: Record<string, any[]> = {};
       
       recordsData.forEach((session: any) => {
