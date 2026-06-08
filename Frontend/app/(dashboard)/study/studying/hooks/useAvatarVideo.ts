@@ -156,6 +156,17 @@ export function useAvatarVideo() {
         if (videoRefA.current) videoRefA.current.play().catch(e => console.log(e));
     };
 
+    useEffect(() => {
+            const activeRef = activeVideo === 'A' ? videoRefA.current : videoRefB.current;
+            const hiddenRef = activeVideo === 'A' ? videoRefB.current : videoRefA.current;
+
+            if (document.pictureInPictureElement && document.pictureInPictureElement === hiddenRef) {
+                activeRef?.requestPictureInPicture().catch(err => {
+                    console.error("PIP 스위칭 실패:", err);
+                });
+            }
+        }, [activeVideo]);
+
     return {
         videoRefA, videoRefB, srcA, srcB, activeVideo,
         handleTimeUpdate, handleVideoEnd, togglePIP, setPendingWarning, resetToDefault,
