@@ -374,27 +374,6 @@ const handleStartStudy = async () => {
             />
           </InputGroup>
 
-          {/* 🌟 이모티콘 제거된 체크박스 */}
-          <CheckboxContainer>
-            <CheckboxLabel>
-              <input 
-                type="checkbox" 
-                checked={isPhoneAllowed} 
-                onChange={(e) => setIsPhoneAllowed(e.target.checked)} 
-              />
-              핸드폰 사용 허용
-            </CheckboxLabel>
-            
-            <CheckboxLabel>
-              <input 
-                type="checkbox" 
-                checked={isBookAllowed} 
-                onChange={(e) => setIsBookAllowed(e.target.checked)} 
-              />
-              책/인쇄물 사용 허용
-            </CheckboxLabel>
-          </CheckboxContainer>
-
           <StartButton onClick={handleStartStudy} disabled={isStarting}>
             {isStarting ? "타이머 준비 중..." : "타이머 시작하기"}
           </StartButton>
