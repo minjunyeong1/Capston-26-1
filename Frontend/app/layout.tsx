@@ -6,7 +6,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "WebbyFrames",
+  title: "옆자리",
   description: "AI 에이전트와 함께 공부하세요.",
 };
 
