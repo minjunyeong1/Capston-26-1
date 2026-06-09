@@ -85,13 +85,21 @@ const ContentArea = styled.main`
   flex: 1;
 `;
 
+const LogoTitle = styled.h2`
+  margin-bottom: 40px;
+  color: #333;
+  font-size: 32px;      
+  font-weight: 900;     
+  letter-spacing: -1px; 
+`;
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
     <DashboardWrapper>
       <Sidebar>
-        <h2 style={{ marginBottom: "40px", color: "#333" }}>WebbyFrames</h2>
+        <LogoTitle>옆자리</LogoTitle>
         
     
         <MenuItem href="/mypage" $isActive={pathname === "/mypage"}>마이페이지</MenuItem>
