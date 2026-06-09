@@ -70,7 +70,7 @@ export default function Header() {
   return (
     <HeaderContainer>
       {/* href 속성에 이동할 주소 */}
-      <Logo href="/">우리 사이트 이름</Logo>
+      <Logo href="/">옆자리</Logo>
       <ButtonGroup>
         <LoginButton href="/login">로그인</LoginButton>
         <SignUpButton href="/signup">회원 가입</SignUpButton>
