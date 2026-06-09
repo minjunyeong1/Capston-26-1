@@ -232,7 +232,7 @@ export default function MyPage() {
       <ChartGrid>
         {/* 첫 번째 카드: 평균 집중도 도넛 차트 */}
         <Card>
-          <CardTitle>전체 평균 집중도 (현재 접속 ID: {userId})</CardTitle>
+          <CardTitle>전체 평균 집중도</CardTitle>
           <DonutContainer>
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
